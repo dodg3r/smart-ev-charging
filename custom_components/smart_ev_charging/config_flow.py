@@ -67,7 +67,7 @@ class SmartEVChargingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Required(CONF_GRID_NET_POWER): _entity(Platform.SENSOR),
                 vol.Required(CONF_PV_POWER): _entity(Platform.SENSOR),
                 vol.Optional(CONF_BATTERY_POWER): _entity(Platform.SENSOR),
-                vol.Optional(CONF_SCHEDULE): _entity(Platform.SCHEDULE),
+                vol.Optional(CONF_SCHEDULE): _entity("schedule"),
             }
         )
         return self.async_show_form(step_id="user", data_schema=schema)
