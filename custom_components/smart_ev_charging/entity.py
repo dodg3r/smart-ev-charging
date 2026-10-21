@@ -23,7 +23,7 @@ class SmartEVChargingEntity(Entity):
             identifiers={(DOMAIN, entry.entry_id)},
             name=entry.title,
             manufacturer="Smart EV Charging",
-            model="Entity-driven EV charging controller",
+            model="Smart EV Charging Controller",
         )
 
     async def async_added_to_hass(self) -> None:
