@@ -6,7 +6,7 @@ Experimental HACS-compatible Home Assistant custom integration for entity-driven
 
 This first build is deliberately **read-only**. It reads house, charger and vehicle entities and calculates a preview target current, but it does not call the charger.
 
-It creates its own controls and diagnostic entities so Node-RED/helpers can eventually be removed.
+It creates native Home Assistant entities owned by the integration, so Node-RED and manually created helper entities can eventually be removed.
 
 ### Created controls
 
