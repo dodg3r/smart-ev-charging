@@ -1,89 +1,81 @@
-"""Sensor platform for Smart EV Charging."""
-
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Callable
+from homeassistant.components.sensor import SensorEntity
 
-from homeassistant.components.sensor import SensorEntity, SensorEntityDescription
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import EntityCategory, UnitOfElectricCurrent
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
-
-from .controller import SmartEVChargingController
-from .entity import SmartEVChargingEntity
+from .entity import SmartEVEntity
 
 
-@dataclass(frozen=True, kw_only=True)
-class SmartSensorDescription(SensorEntityDescription):
-    value_fn: Callable[[SmartEVChargingController], object]
-    attrs_fn: Callable[[SmartEVChargingController], dict] | None = None
+SENSORS = {
+    "status": "Status",
+    "info": "Limiting reason",
+    "debug": "Debug",
+    "target_current": "Target current",
+    "available_current": "Available current",
+    "detected_phases": "Detected phases",
+    "session_state": "Session state",
+    "last_decision": "Last decision",
+    "planner_status": "Planner status",
+}
 
 
-SENSORS = (
-    SmartSensorDescription(key="status", translation_key="status", value_fn=lambda c: c.state.status),
-    SmartSensorDescription(key="limiting_reason", translation_key="limiting_reason", value_fn=lambda c: c.state.limiting_reason),
-    SmartSensorDescription(
-        key="debug",
-        translation_key="debug",
-        entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda c: c.state.debug,
-        attrs_fn=lambda c: c.state.extra,
-    ),
-    SmartSensorDescription(
-        key="target_current",
-        translation_key="target_current",
-        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
-        value_fn=lambda c: c.state.target_current,
-    ),
-    SmartSensorDescription(
-        key="available_current",
-        translation_key="available_current",
-        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
-        value_fn=lambda c: round(c.state.available_current, 1),
-    ),
-    SmartSensorDescription(key="detected_phases", translation_key="detected_phases", value_fn=lambda c: c.state.detected_phases),
-    SmartSensorDescription(key="session_state", translation_key="session_state", value_fn=lambda c: c.state.session_state),
-    SmartSensorDescription(
-        key="last_decision",
-        translation_key="last_decision",
-        entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda c: c.state.last_decision,
-    ),
-    SmartSensorDescription(
-        key="last_command_result",
-        translation_key="last_command_result",
-        entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda c: c.state.last_command_result,
-    ),
-)
+async def async_setup_entry(hass, entry, async_add_entities):
+    coordinator = hass.data["smart_ev_charging"][entry.entry_id]
+    async_add_entities(
+        SmartEVSensor(coordinator, entry, key, name)
+        for key, name in SENSORS.items()
+    )
 
 
-async def async_setup_entry(
-    hass: HomeAssistant,
-    entry: ConfigEntry,
-    async_add_entities: AddConfigEntryEntitiesCallback,
-) -> None:
-    controller: SmartEVChargingController = entry.runtime_data
-    async_add_entities(SmartSensor(entry, controller, description) for description in SENSORS)
-
-
-class SmartSensor(SmartEVChargingEntity, SensorEntity):
-    """Smart EV Charging sensor."""
-
-    entity_description: SmartSensorDescription
-
-    def __init__(self, entry, controller, description: SmartSensorDescription) -> None:
-        super().__init__(entry, controller, description.key)
-        self.entity_description = description
+class SmartEVSensor(SmartEVEntity, SensorEntity):
+    def __init__(self, coordinator, entry, key, name):
+        super().__init__(coordinator, entry, key)
+        self._attr_name = name
 
     @property
     def native_value(self):
-        return self.entity_description.value_fn(self.controller)
+        decision = self.coordinator.decision
+        if decision is None:
+            return None
+
+        if self.key == "status":
+            return decision.status
+        if self.key == "info":
+            return decision.info or "-"
+        if self.key == "debug":
+            return decision.debug
+        if self.key == "target_current":
+            return decision.target_current if decision.target_current is not None else 0
+        if self.key == "available_current":
+            return decision.attributes.get("balance_limit_a", 0)
+        if self.key == "detected_phases":
+            return decision.attributes.get("detected_phases", 3)
+        if self.key == "session_state":
+            return "active" if self.coordinator.controller.state.session_active else "inactive"
+        if self.key == "last_decision":
+            return decision.event
+        if self.key == "planner_status":
+            return "not_ported"
+        return None
 
     @property
     def extra_state_attributes(self):
-        if self.entity_description.attrs_fn is None:
-            return None
-        return self.entity_description.attrs_fn(self.controller)
+        decision = self.coordinator.decision
+        if decision is None:
+            return {}
+        if self.key == "debug":
+            return {
+                "event": decision.event,
+                "command_preview": decision.command,
+                **decision.attributes,
+            }
+        if self.key == "planner_status":
+            return {
+                "reason": "The uploaded Node-RED flow consumes nordpool_cheapest_plan but does not contain the code that builds that plan."
+            }
+        return {}
+
+    @property
+    def native_unit_of_measurement(self):
+        if self.key in {"target_current", "available_current"}:
+            return "A"
+        return None

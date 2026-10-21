@@ -1,82 +1,54 @@
-"""Number platform for Smart EV Charging."""
-
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Callable
-
-from homeassistant.components.number import NumberEntity, NumberEntityDescription, NumberMode
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import PERCENTAGE, UnitOfElectricCurrent, UnitOfPower, UnitOfTime
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.helpers.restore_state import RestoreEntity
 
-from .const import (
-    DEFAULT_BATTERY_SUPPORT_THRESHOLD,
-    DEFAULT_CLOUD_PAUSE_DURATION,
-    DEFAULT_CLOUD_PAUSE_THRESHOLD,
-    DEFAULT_LOAD_MARGIN,
-    DEFAULT_MAIN_FUSE,
-    DEFAULT_MAX_CURRENT,
-    DEFAULT_MINIMUM_SOC,
-)
-from .controller import SmartEVChargingController
-from .entity import SmartEVChargingEntity
+from .entity import SmartEVEntity
 
 
-@dataclass(frozen=True, kw_only=True)
-class SmartNumberDescription(NumberEntityDescription):
-    default: float
-    getter: Callable[[SmartEVChargingController], float]
-    setter: Callable[[SmartEVChargingController, float], None]
+NUMBERS = {
+    "main_fuse": ("Main fuse", 6, 100, 1, "A"),
+    "load_margin": ("Load margin", 0, 20, 0.5, "A"),
+    "cloud_pause_duration": ("Cloud pause duration", 0, 1800, 10, "s"),
+    "max_current": ("Maximum charging current", 6, 80, 1, "A"),
+    "cloud_pause_threshold": ("Cloud pause threshold", 0, 10000, 50, "W"),
+    "battery_support_threshold": ("Battery support threshold", 0, 10000, 50, "W"),
+    "minimum_soc": ("Minimum SOC", 0, 100, 1, "%"),
+}
 
 
-def _set(name: str):
-    def setter(controller: SmartEVChargingController, value: float) -> None:
-        setattr(controller, name, value)
-        controller.async_recalculate()
-    return setter
+async def async_setup_entry(hass, entry, async_add_entities):
+    coordinator = hass.data["smart_ev_charging"][entry.entry_id]
+    async_add_entities(
+        SmartEVNumber(coordinator, entry, key, *spec)
+        for key, spec in NUMBERS.items()
+    )
 
 
-NUMBERS = (
-    SmartNumberDescription(key="main_fuse", translation_key="main_fuse", default=DEFAULT_MAIN_FUSE, native_min_value=6, native_max_value=100, native_step=1, native_unit_of_measurement=UnitOfElectricCurrent.AMPERE, mode=NumberMode.BOX, getter=lambda c: c.main_fuse_a, setter=_set("main_fuse_a")),
-    SmartNumberDescription(key="load_margin", translation_key="load_margin", default=DEFAULT_LOAD_MARGIN, native_min_value=0, native_max_value=20, native_step=0.5, native_unit_of_measurement=UnitOfElectricCurrent.AMPERE, mode=NumberMode.BOX, getter=lambda c: c.load_margin_a, setter=_set("load_margin_a")),
-    SmartNumberDescription(key="max_current", translation_key="max_current", default=DEFAULT_MAX_CURRENT, native_min_value=6, native_max_value=80, native_step=1, native_unit_of_measurement=UnitOfElectricCurrent.AMPERE, mode=NumberMode.BOX, getter=lambda c: c.max_current_a, setter=_set("max_current_a")),
-    SmartNumberDescription(key="minimum_soc", translation_key="minimum_soc", default=DEFAULT_MINIMUM_SOC, native_min_value=0, native_max_value=100, native_step=1, native_unit_of_measurement=PERCENTAGE, mode=NumberMode.SLIDER, getter=lambda c: c.minimum_soc, setter=_set("minimum_soc")),
-    SmartNumberDescription(key="cloud_pause_duration", translation_key="cloud_pause_duration", default=DEFAULT_CLOUD_PAUSE_DURATION, native_min_value=0, native_max_value=1800, native_step=10, native_unit_of_measurement=UnitOfTime.SECONDS, mode=NumberMode.BOX, getter=lambda c: c.cloud_pause_duration_s, setter=_set("cloud_pause_duration_s")),
-    SmartNumberDescription(key="cloud_pause_threshold", translation_key="cloud_pause_threshold", default=DEFAULT_CLOUD_PAUSE_THRESHOLD, native_min_value=0, native_max_value=10000, native_step=50, native_unit_of_measurement=UnitOfPower.WATT, mode=NumberMode.BOX, getter=lambda c: c.cloud_pause_threshold_w, setter=_set("cloud_pause_threshold_w")),
-    SmartNumberDescription(key="battery_support_threshold", translation_key="battery_support_threshold", default=DEFAULT_BATTERY_SUPPORT_THRESHOLD, native_min_value=0, native_max_value=10000, native_step=50, native_unit_of_measurement=UnitOfPower.WATT, mode=NumberMode.BOX, getter=lambda c: c.battery_support_threshold_w, setter=_set("battery_support_threshold_w")),
-)
+class SmartEVNumber(SmartEVEntity, NumberEntity, RestoreEntity):
+    _attr_mode = NumberMode.BOX
 
-
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddConfigEntryEntitiesCallback) -> None:
-    controller: SmartEVChargingController = entry.runtime_data
-    async_add_entities(SmartNumber(entry, controller, description) for description in NUMBERS)
-
-
-class SmartNumber(SmartEVChargingEntity, RestoreEntity, NumberEntity):
-    """Integration-owned setting."""
-
-    entity_description: SmartNumberDescription
-
-    def __init__(self, entry, controller, description: SmartNumberDescription) -> None:
-        super().__init__(entry, controller, description.key)
-        self.entity_description = description
+    def __init__(self, coordinator, entry, key, name, minimum, maximum, step, unit):
+        super().__init__(coordinator, entry, key)
+        self._attr_name = name
+        self._attr_native_min_value = minimum
+        self._attr_native_max_value = maximum
+        self._attr_native_step = step
+        self._attr_native_unit_of_measurement = unit
 
     @property
-    def native_value(self) -> float:
-        return self.entity_description.getter(self.controller)
+    def native_value(self):
+        return float(self.coordinator.settings[self.key])
 
-    async def async_added_to_hass(self) -> None:
+    async def async_added_to_hass(self):
         await super().async_added_to_hass()
-        previous = await self.async_get_last_state()
-        if previous is not None:
+        old = await self.async_get_last_state()
+        if old is not None:
             try:
-                self.entity_description.setter(self.controller, float(previous.state))
+                self.coordinator.settings[self.key] = float(old.state)
             except (TypeError, ValueError):
                 pass
 
     async def async_set_native_value(self, value: float) -> None:
-        self.entity_description.setter(self.controller, value)
-        self.async_write_ha_state()
+        self.coordinator.settings[self.key] = value
+        await self.coordinator.async_request_refresh()
