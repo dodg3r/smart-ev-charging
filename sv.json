@@ -1,0 +1,78 @@
+{
+  "title": "Smart EV Charging",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Hus och elnät",
+        "description": "Välj Home Assistant-entiteter som används som indata för laddplatsen.",
+        "data": {
+          "site_name": "Platsnamn",
+          "grid_power_l1": "Elnät effekt L1",
+          "grid_power_l2": "Elnät effekt L2",
+          "grid_power_l3": "Elnät effekt L3",
+          "grid_net_power": "Elnät nettoeffekt",
+          "pv_power": "Solproduktion",
+          "battery_power": "Batterieffekt (valfri)",
+          "schedule": "Laddschema (valfritt)"
+        }
+      },
+      "charger": {
+        "title": "Laddarentiteter",
+        "description": "Välj återkoppling från laddaren och hur laddaren styrs. Version 0.1.0 är read-only och skickar inga kommandon.",
+        "data": {
+          "charger_status": "Laddarstatus",
+          "charger_power": "Laddeffekt",
+          "charger_current": "Laddström (valfri)",
+          "charger_current_l1": "Laddström L1",
+          "charger_current_l2": "Laddström L2",
+          "charger_current_l3": "Laddström L3",
+          "current_control_method": "Metod för strömstyrning",
+          "current_limit_entity": "Entitet för strömgräns",
+          "start_stop_method": "Metod för start/stopp"
+        }
+      },
+      "control_switch": {
+        "title": "Brytare för laddning",
+        "data": {"charge_control_switch": "Laddbrytare"}
+      },
+      "control_buttons": {
+        "title": "Start- och stoppknappar",
+        "data": {
+          "start_button": "Startknapp",
+          "stop_button": "Stoppknapp"
+        }
+      },
+      "vehicle": {
+        "title": "Bilentiteter",
+        "data": {
+          "vehicle_soc": "Bilens batteri-SOC",
+          "vehicle_charging_status": "Bilens laddstatus (valfri)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "status": {"name": "Status"},
+      "limiting_reason": {"name": "Begränsning"},
+      "debug": {"name": "Debug"},
+      "target_current": {"name": "Målström"},
+      "available_current": {"name": "Tillgänglig ström"},
+      "detected_phases": {"name": "Detekterade faser"},
+      "session_state": {"name": "Sessionsstatus"},
+      "last_decision": {"name": "Senaste beslut"},
+      "last_command_result": {"name": "Senaste kommandoresultat"}
+    },
+    "number": {
+      "main_fuse": {"name": "Huvudsäkring"},
+      "load_margin": {"name": "Lastmarginal"},
+      "max_current": {"name": "Maximal laddström"},
+      "minimum_soc": {"name": "Lägsta SOC"},
+      "cloud_pause_duration": {"name": "Molnpaustid"},
+      "cloud_pause_threshold": {"name": "Molnpausgräns"},
+      "battery_support_threshold": {"name": "Gräns för batteristöd"}
+    },
+    "select": {"charging_mode": {"name": "Laddningsläge"}},
+    "switch": {"priority_charging": {"name": "Prioriterad billaddning"}}
+  }
+}

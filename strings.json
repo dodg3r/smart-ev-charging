@@ -1,0 +1,78 @@
+{
+  "title": "Smart EV Charging",
+  "config": {
+    "step": {
+      "user": {
+        "title": "House and grid",
+        "description": "Select the Home Assistant entities used as input for this charging site.",
+        "data": {
+          "site_name": "Site name",
+          "grid_power_l1": "Grid power L1",
+          "grid_power_l2": "Grid power L2",
+          "grid_power_l3": "Grid power L3",
+          "grid_net_power": "Grid net power",
+          "pv_power": "PV power",
+          "battery_power": "Battery power (optional)",
+          "schedule": "Charging schedule (optional)"
+        }
+      },
+      "charger": {
+        "title": "Charger entities",
+        "description": "Select charger feedback and how the charger is controlled. Version 0.1.0 is read-only and will not send commands.",
+        "data": {
+          "charger_status": "Charger status",
+          "charger_power": "Charging power",
+          "charger_current": "Charging current (optional)",
+          "charger_current_l1": "Charging current L1",
+          "charger_current_l2": "Charging current L2",
+          "charger_current_l3": "Charging current L3",
+          "current_control_method": "Current control method",
+          "current_limit_entity": "Current limit entity",
+          "start_stop_method": "Start/stop control method"
+        }
+      },
+      "control_switch": {
+        "title": "Charge control switch",
+        "data": {"charge_control_switch": "Charge control switch"}
+      },
+      "control_buttons": {
+        "title": "Start and stop buttons",
+        "data": {
+          "start_button": "Start charging button",
+          "stop_button": "Stop charging button"
+        }
+      },
+      "vehicle": {
+        "title": "Vehicle entities",
+        "data": {
+          "vehicle_soc": "Vehicle battery SOC",
+          "vehicle_charging_status": "Vehicle charging status (optional)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "status": {"name": "Status"},
+      "limiting_reason": {"name": "Limiting reason"},
+      "debug": {"name": "Debug"},
+      "target_current": {"name": "Target current"},
+      "available_current": {"name": "Available current"},
+      "detected_phases": {"name": "Detected phases"},
+      "session_state": {"name": "Session state"},
+      "last_decision": {"name": "Last decision"},
+      "last_command_result": {"name": "Last command result"}
+    },
+    "number": {
+      "main_fuse": {"name": "Main fuse"},
+      "load_margin": {"name": "Load margin"},
+      "max_current": {"name": "Maximum charging current"},
+      "minimum_soc": {"name": "Minimum SOC"},
+      "cloud_pause_duration": {"name": "Cloud pause duration"},
+      "cloud_pause_threshold": {"name": "Cloud pause threshold"},
+      "battery_support_threshold": {"name": "Battery support threshold"}
+    },
+    "select": {"charging_mode": {"name": "Charging mode"}},
+    "switch": {"priority_charging": {"name": "Priority charging"}}
+  }
+}
